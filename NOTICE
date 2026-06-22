@@ -1,0 +1,16 @@
+SecureVector Terraform module for Amazon Web Services
+Copyright (c) SecureVector
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This module provisions the SecureVector engine (the local SecureVector app /
+threat monitor, distributed as the container image published from
+securevector-ai-threat-monitor) into the user's own AWS account. Data scanned
+by the engine stays in the user's account (bring-your-own-cloud).
+
+"Terraform" is a trademark of HashiCorp, Inc. "AWS", "Amazon Web Services",
+"Fargate", "Amazon ECS", "Amazon EFS", and related marks are trademarks of
+Amazon.com, Inc. or its affiliates. This is an independent, community module
+and is not affiliated with, sponsored by, or endorsed by HashiCorp or Amazon.
+Those names are used only descriptively to identify compatibility (nominative
+fair use).

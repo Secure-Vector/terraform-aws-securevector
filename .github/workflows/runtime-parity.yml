@@ -1,0 +1,68 @@
+name: runtime-parity
+
+# Guards the shared client contract: runtime.tf MUST stay byte-identical across
+# every terraform-<cloud>-securevector repo. The canonical hash lives in
+# runtime.tf.sha256 (the same string in all four repos), so "this file matches
+# its recorded hash" + "all four record the same hash" => all four are identical.
+#
+# To change runtime.tf, edit it once and run ./sync-runtime.sh (kept alongside
+# the repos) to propagate the file + regenerate runtime.tf.sha256 in all four,
+# then open a PR per repo.
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  canonical-hash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: runtime.tf matches the canonical SecureVector contract hash
+        run: |
+          echo "Expected (shared across all terraform-*-securevector repos):"
+          cat runtime.tf.sha256
+          sha256sum -c runtime.tf.sha256
+          echo "OK: runtime.tf matches the canonical contract."
+
+  cross-repo:
+    # Optional STRONG check: confirm the other three cloud repos carry the
+    # identical runtime.tf. Needs a token with read access to the sibling repos
+    # (set a repo/org secret named PARITY_TOKEN). Skips cleanly when absent, so
+    # private-repo CI never breaks — the canonical-hash job above still guards
+    # this repo on its own.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare runtime.tf across all four cloud repos
+        env:
+          GH_TOKEN: ${{ secrets.PARITY_TOKEN }}
+        run: |
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "PARITY_TOKEN not set - skipping cross-repo comparison."
+            echo "(The canonical-hash job still guards this repo.)"
+            exit 0
+          fi
+          set -euo pipefail
+          local_hash=$(sha256sum runtime.tf | awk '{print $1}')
+          echo "local runtime.tf: $local_hash"
+          fail=0
+          for repo in \
+            terraform-google-securevector \
+            terraform-aws-securevector \
+            terraform-azurerm-securevector \
+            terraform-oci-securevector; do
+            remote=$(gh api "repos/Secure-Vector/$repo/contents/runtime.tf" \
+              -H "Accept: application/vnd.github.raw" | sha256sum | awk '{print $1}')
+            if [ "$remote" = "$local_hash" ]; then
+              echo "  OK      $repo: $remote"
+            else
+              echo "  DIFFERS $repo: $remote"
+              fail=1
+            fi
+          done
+          [ "$fail" -eq 0 ] || { echo "runtime.tf has drifted across repos"; exit 1; }

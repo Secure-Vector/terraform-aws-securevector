@@ -1,0 +1,22 @@
+# Terraform
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Local variable files — may contain tokens / project ids
+*.tfvars
+*.tfvars.json
+!example.tfvars
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
