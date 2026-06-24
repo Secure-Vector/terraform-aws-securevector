@@ -59,6 +59,12 @@ module "securevector" {
   min_instances        = 1
   max_instances        = 1
   securevector_api_key = var.securevector_api_key
+
+  # EU data residency: keep ALL prompt analysis local even with Cloud Mode on.
+  # The v4.8+ engine honors SV_DATA_RESIDENCY=eu (locks local-only analysis on;
+  # the toggle is enforced/locked and cloud /analyze is forced local). Harmless
+  # no-op on older engine images.
+  extra_env = { SV_DATA_RESIDENCY = "eu" }
 }
 
 output "dashboard_url" {
