@@ -4,11 +4,13 @@
 # Same shape as ../free-tier, but pinned to an EU region for data residency.
 # Every resource this module creates — the Fargate task, the ALB, the EFS volume,
 # and the CloudWatch log group — is created in the provider's region, so setting
-# an EU region keeps all governance/runtime data inside the EU. Nothing in this
+# an EU region keeps the resident copy of governance/runtime data in-region. Nothing in this
 # module replicates data to another region.
 #
 # Data residency: the engine processes and stores agent/governance data only in
-# the AWS account and region you deploy into. SecureVector never receives it.
+# the AWS account and region you deploy into. SecureVector does not store it. (NOTE: with Cloud Mode on, the engine sends
+# prompt text to scan.securevector.io (US) for ML analysis — not stored, but it
+# leaves the region; leave Cloud Mode off for strict EU residency. See README.)
 # See the module README for the residency posture.
 #
 # Default region here is eu-west-1 (Ireland). eu-central-1 (Frankfurt) also works
