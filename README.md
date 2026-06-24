@@ -8,9 +8,13 @@
 > in ~5 minutes.** The turnkey *server* companion to the SecureVector Guard SDKs
 > ([langchain](https://pypi.org/project/securevector-sdk-langchain/) ·
 > [langgraph](https://pypi.org/project/securevector-sdk-langgraph/) ·
-> [crewai](https://pypi.org/project/securevector-sdk-crewai/)). The SDKs secure
-> one agent on one laptop; this stands up the shared engine your whole team's
-> agents, CI runners, and prod services point at.
+> [crewai](https://pypi.org/project/securevector-sdk-crewai/)) **and the Guard
+> plugins** for agent runtimes (Claude Code, Codex, GitHub Copilot CLI, OpenClaw,
+> and more — see the
+> [threat-monitor repo](https://github.com/Secure-Vector/securevector-ai-threat-monitor)).
+> The SDKs and plugins secure individual agents on individual machines; this
+> stands up the shared engine your whole team's agents, CI runners, and prod
+> services point at.
 
 This is **bring-your-own-cloud (BYOC) self-hosting**: the engine and all scanned
 data live in *your* account, in *your* tenant — nothing leaves. It is the
