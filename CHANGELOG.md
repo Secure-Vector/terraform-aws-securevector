@@ -7,6 +7,10 @@ release per `vX.Y.Z` git tag.
 ## [Unreleased]
 
 ### Added
+- **EU-region example** (`examples/eu-region/`) for data-residency deployments —
+  pins the region to `eu-west-1` (Ireland; `eu-central-1` for Frankfurt) and
+  documents that every resource (Fargate task, ALB, EFS, CloudWatch logs) stays
+  in the chosen region. No root-module change — region is provider-driven.
 - Initial AWS module: deploys the SecureVector engine to the user's own AWS
   account on **ECS Fargate behind an Application Load Balancer**, with a clean
   `terraform destroy`. Defaults to the account's default VPC + public subnets so
