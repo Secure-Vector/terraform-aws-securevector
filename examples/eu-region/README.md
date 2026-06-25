@@ -17,25 +17,4 @@ Every resource this module creates — the Fargate task, the ALB, the EFS persis
 
 > **EU data residency is enforced in this example.** It sets `extra_env = { SV_DATA_RESIDENCY = "eu" }`, which the **v4.8+ engine** honors by keeping **all prompt analysis local**: even with Cloud Mode on, prompts are **not** sent to SecureVector's cloud scan service (`scan.securevector.io`, US) — the local-only analysis toggle is locked on and cannot be disabled. No prompt text leaves your region. (The module pulls the `:latest` engine image; ensure it is **v4.8 or newer** for this enforcement. On older images the flag is a harmless no-op — leave Cloud Mode off for strict residency until you're on v4.8+.)
 
-If you later enable Cloud Connect to view your governance posture in the SecureVector cloud, only metadata + hashes (never raw text) are forwarded, and only after you explicitly accept the governance terms. Keeping the deployment in an EU region keeps the resident copy of your data in the EU.
-
-## Connect your agents to this deployment
-
-`terraform output` prints the endpoint URL. Point your agents at it **from the machine where they run** — no local app required. (Default, with no endpoint set, uses a local app.)
-
-**SDK** (LangChain / LangGraph / CrewAI) — lightweight install, adapter only:
-
-```bash
-pip install securevector-sdk-langchain --no-deps     # or -langgraph / -crewai
-export SECUREVECTOR_SDK_APP_URL=https://<endpoint>    # from `terraform output`
-export SECUREVECTOR_API_KEY=<your key>
-```
-
-**Plugin** (Claude Code / Codex / GitHub Copilot CLI / OpenClaw) — install where the agent runs, then point the hooks at the endpoint:
-
-```bash
-securevector-app --install-plugin claude-code        # installs the hooks (no app server needs to run)
-export SV_BASE_URL=https://<endpoint>                 # the hooks forward here at runtime
-```
-
-A single unified `SECUREVECTOR_ENDPOINT` variable and a one-step plugin `--endpoint` flag are planned — see [story #190](https://github.com/Secure-Vector/llm-security-engine/issues/190).
+If you later enable Cloud Connect to view your governance posture in the SecureVector cloud, only metadata + hashes (never raw text) are forwarded, and only after you explicitly accept the governance terms. Keeping the deployment in an EU region keeps the resident copy of your data in the EU. Forwarded metadata can include identifiers (device, agent, model, and conversation IDs) that may be personal data under GDPR and is processed by SecureVector in the US — treat its use as your DPO's assessment.
