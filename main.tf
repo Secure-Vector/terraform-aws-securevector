@@ -64,16 +64,53 @@ locals {
   #   SECUREVECTOR_ENROLL_TOKEN — svet_* org enrollment token. Consumed by the
   #                             `securevector-app enroll` subcommand, so the IMAGE
   #                             ENTRYPOINT must enroll before serving (see README).
+  # Credentials are NEVER inlined as plaintext `environment` entries (those are
+  # readable in the task definition and in Terraform state). Each sensitive
+  # value becomes an SSM SecureString parameter referenced through the task
+  # definition's `secrets` (valueFrom); ECS injects it at container start. To
+  # keep a value out of Terraform state entirely, pre-create the parameter (or
+  # a Secrets Manager secret) yourself and pass its ARN via
+  # existing_secret_arns instead of the variable.
+  secret_env_all = {
+    SECUREVECTOR_INGRESS_TOKEN = var.ingress_token
+    SECUREVECTOR_API_KEY       = var.securevector_api_key
+    SECUREVECTOR_ENROLL_TOKEN  = var.cloud_connect_token
+  }
+
+  # for_each cannot iterate sensitive-derived collections, so the NAME set is
+  # explicitly unwrapped (only the set-or-not bit leaks, never the value).
+  secret_env_names = [
+    for k, v in local.secret_env_all : k if nonsensitive(v != "")
+  ]
+
+  # Caller-supplied ARNs win over the corresponding variable.
+  managed_secret_names = [
+    for k in local.secret_env_names : k if !contains(keys(var.existing_secret_arns), k)
+  ]
+
+  # Non-sensitive engine env stays as plain environment entries.
   container_env = merge(
-    var.ingress_token != "" ? { SECUREVECTOR_INGRESS_TOKEN = var.ingress_token } : {},
-    var.securevector_api_key != "" ? { SECUREVECTOR_API_KEY = var.securevector_api_key } : {},
     var.securevector_api_url != "" ? { SECUREVECTOR_API_URL = var.securevector_api_url } : {},
-    var.cloud_connect_token != "" ? { SECUREVECTOR_ENROLL_TOKEN = var.cloud_connect_token } : {},
     var.extra_env,
   )
 
   # ECS container definitions want env as a list of {name, value} objects.
   container_env_list = [for k, v in local.container_env : { name = k, value = tostring(v) }]
+
+  # `secrets` entries: {name, valueFrom} pointing at SSM / Secrets Manager.
+  container_secrets_list = concat(
+    [for k in sort(local.managed_secret_names) : { name = k, valueFrom = aws_ssm_parameter.secret_env[k].arn }],
+    [for k in sort(keys(var.existing_secret_arns)) : { name = k, valueFrom = var.existing_secret_arns[k] }],
+  )
+
+  # Execution-role read grants, split by service (both ARN kinds accepted).
+  ssm_secret_arns = concat(
+    [for k in sort(local.managed_secret_names) : aws_ssm_parameter.secret_env[k].arn],
+    [for arn in values(var.existing_secret_arns) : arn if strcontains(arn, ":ssm:")],
+  )
+  secretsmanager_secret_arns = [
+    for arn in values(var.existing_secret_arns) : arn if strcontains(arn, ":secretsmanager:")
+  ]
 
   # ALB ingress source: open to the internet when allow_unauthenticated, else
   # restrict to the caller-supplied CIDRs (empty list = nothing reachable).
@@ -246,6 +283,50 @@ resource "aws_iam_role" "task" {
 }
 
 ###############################################################################
+# Secrets — sensitive engine env lives in SSM SecureString, not plaintext env
+###############################################################################
+
+resource "aws_ssm_parameter" "secret_env" {
+  for_each = toset(local.managed_secret_names)
+
+  name  = "/${var.name}/${each.key}"
+  type  = "SecureString"
+  value = local.secret_env_all[each.key]
+  tags  = var.tags
+}
+
+# The task EXECUTION role resolves `secrets` valueFrom references at container
+# start. SecureStrings under the default aws/ssm KMS key need no extra
+# kms:Decrypt grant.
+data "aws_iam_policy_document" "secrets_access" {
+  count = length(local.ssm_secret_arns) + length(local.secretsmanager_secret_arns) > 0 ? 1 : 0
+
+  dynamic "statement" {
+    for_each = length(local.ssm_secret_arns) > 0 ? [1] : []
+    content {
+      actions   = ["ssm:GetParameters"]
+      resources = local.ssm_secret_arns
+    }
+  }
+
+  dynamic "statement" {
+    for_each = length(local.secretsmanager_secret_arns) > 0 ? [1] : []
+    content {
+      actions   = ["secretsmanager:GetSecretValue"]
+      resources = local.secretsmanager_secret_arns
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "execution_secrets" {
+  count = length(local.ssm_secret_arns) + length(local.secretsmanager_secret_arns) > 0 ? 1 : 0
+
+  name   = "${var.name}-secrets"
+  role   = aws_iam_role.execution.id
+  policy = data.aws_iam_policy_document.secrets_access[0].json
+}
+
+###############################################################################
 # Logs + ECS cluster
 ###############################################################################
 
@@ -314,6 +395,7 @@ resource "aws_ecs_task_definition" "this" {
         image       = var.image
         essential   = true
         environment = local.container_env_list
+        secrets     = local.container_secrets_list
         portMappings = [{
           containerPort = var.container_port
           protocol      = "tcp"

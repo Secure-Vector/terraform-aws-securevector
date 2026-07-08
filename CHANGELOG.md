@@ -6,6 +6,19 @@ release per `vX.Y.Z` git tag.
 
 ## [Unreleased]
 
+### Security
+- **Credentials moved out of plaintext container env**: `ingress_token`,
+  `securevector_api_key`, and `cloud_connect_token` are now stored as SSM
+  SecureString parameters and injected via the ECS task definition's `secrets`
+  (`valueFrom`) instead of plaintext `environment` entries readable in the task
+  definition. The task execution role is granted least-privilege
+  `ssm:GetParameters` on exactly those parameters.
+- New `existing_secret_arns` input: reference pre-created SSM SecureString
+  parameters or Secrets Manager secrets by ARN (keyed by env var name) so
+  credential values never transit Terraform or its state at all.
+- README: documented state-hygiene guidance (module-created parameters still
+  place the value in Terraform state; use `existing_secret_arns` to avoid).
+
 ### Added
 - **EU-region example** (`examples/eu-region/`) for data-residency deployments —
   pins the region to `eu-west-1` (Ireland; `eu-central-1` for Frankfurt) and

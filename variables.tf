@@ -256,7 +256,13 @@ variable "enable_execute_command" {
 }
 
 variable "extra_env" {
-  description = "Additional environment variables to pass to the engine container (advanced / forward-compat with future server-mode flags)."
+  description = "Additional environment variables to pass to the engine container (advanced / forward-compat with future server-mode flags). NON-SENSITIVE values only — these are plaintext in the task definition. Put credentials in ingress_token / securevector_api_key / cloud_connect_token (stored as SSM SecureStrings) or reference them via existing_secret_arns."
+  type        = map(string)
+  default     = {}
+}
+
+variable "existing_secret_arns" {
+  description = "Pre-created secret references for sensitive engine env vars, keyed by ENV VAR NAME (e.g. SECUREVECTOR_INGRESS_TOKEN) -> an SSM SecureString parameter ARN or a Secrets Manager secret ARN. Entries here take precedence over ingress_token / securevector_api_key / cloud_connect_token and keep the secret value out of Terraform state entirely (the module never sees it). The task execution role is granted read access automatically; SecureStrings encrypted with a CUSTOM KMS key additionally need kms:Decrypt granted to that role outside the module."
   type        = map(string)
   default     = {}
 }
