@@ -171,7 +171,34 @@ Until the Registry listing is live, point `source` at the repo:
 | `container_insights` | bool | `false` | ECS Container Insights (extra cost). |
 | `enable_execute_command` | bool | `false` | ECS Exec for debugging into the task. |
 | `tags` | map(string) | `{}` | Tags on created resources. |
-| `extra_env` | map(string) | `{}` | Extra container env vars. |
+| `extra_env` | map(string) | `{}` | Extra container env vars. **Non-sensitive only** (plaintext in the task definition). |
+| `existing_secret_arns` | map(string) | `{}` | Env-name → SSM SecureString / Secrets Manager ARN for credentials you pre-created. Wins over the token variables; keeps values out of Terraform state entirely. |
+
+## Secrets handling
+
+The three credential variables (`ingress_token`, `securevector_api_key`,
+`cloud_connect_token`) are **never written into the task definition as
+plaintext env**. Each becomes an **SSM SecureString parameter**
+(`/<name>/<ENV_VAR>`) referenced through the container's `secrets`
+(`valueFrom`), and the task execution role is granted `ssm:GetParameters` on
+exactly those parameters. Two hygiene notes:
+
+- A value passed *through Terraform* (via the variables) still lands in
+  **Terraform state** as the SSM parameter's value — protect your state
+  backend, or avoid it entirely with `existing_secret_arns`:
+
+  ```hcl
+  # value never transits Terraform:
+  # aws ssm put-parameter --name /securevector/SECUREVECTOR_INGRESS_TOKEN \
+  #   --type SecureString --value "$TOKEN"
+  existing_secret_arns = {
+    SECUREVECTOR_INGRESS_TOKEN = "arn:aws:ssm:us-west-2:123456789012:parameter/securevector/SECUREVECTOR_INGRESS_TOKEN"
+  }
+  ```
+
+- Parameters use the default `aws/ssm` KMS key. If you reference a parameter
+  or Secrets Manager secret encrypted with a **custom** KMS key, grant the
+  task execution role `kms:Decrypt` on that key outside the module.
 
 ## Outputs
 
