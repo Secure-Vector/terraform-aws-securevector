@@ -62,7 +62,7 @@ locals {
     EOT
 
     langchain = <<-EOT
-      pip install securevector-sdk-langchain
+      pip install securevector-sdk-langchain          # add --no-deps if your agent env already has the framework (lightweight)
       export SECUREVECTOR_SDK_APP_URL=${local.base_url}
       export SECUREVECTOR_SDK_MODE=enforce
       export SECUREVECTOR_API_KEY=<api key / token>      # = ingress_token if set; forwarded as Authorization: Bearer
@@ -74,7 +74,7 @@ locals {
     EOT
 
     langgraph = <<-EOT
-      pip install securevector-sdk-langgraph
+      pip install securevector-sdk-langgraph          # add --no-deps if your agent env already has the framework (lightweight)
       export SECUREVECTOR_SDK_APP_URL=${local.base_url}
       export SECUREVECTOR_SDK_MODE=enforce
       export SECUREVECTOR_API_KEY=<api key / token>      # = ingress_token if set; forwarded as Authorization: Bearer
@@ -86,7 +86,7 @@ locals {
     EOT
 
     crewai = <<-EOT
-      pip install securevector-sdk-crewai
+      pip install securevector-sdk-crewai          # add --no-deps if your agent env already has the framework (lightweight)
       export SECUREVECTOR_SDK_APP_URL=${local.base_url}
       export SECUREVECTOR_SDK_MODE=enforce
       export SECUREVECTOR_API_KEY=<api key / token>      # = ingress_token if set; forwarded as Authorization: Bearer
